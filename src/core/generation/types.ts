@@ -135,6 +135,138 @@ export interface HandleRequestOptions {
 }
 
 /**
+ * Provider metadata for NANDA AgentFacts discovery (`provider` field).
+ */
+export interface AgentProviderInfo {
+  name: string
+  url: string
+  did?: string
+}
+
+/**
+ * Convenience input accepted for `provider` in `BindMcpOptions`.
+ */
+export type AgentProviderInput =
+  | string
+  | {
+      name: string
+      url?: string
+      did?: string
+    }
+
+/**
+ * NANDA skill descriptor projected from registered MCP tools.
+ */
+export interface AgentSkill {
+  id: string
+  description: string
+  inputModes: string[]
+  outputModes: string[]
+  inputSchema?: Record<string, unknown>
+}
+
+/**
+ * NANDA adaptive resolver endpoint configuration.
+ */
+export interface AgentAdaptiveResolver {
+  url: string
+  policies?: string[]
+}
+
+/**
+ * NANDA observability and telemetry declaration in `AgentFacts`.
+ */
+export interface AgentTelemetryConfig {
+  enabled: boolean
+  sampling_rate?: number
+  metrics?: string[]
+  retention?: string
+}
+
+/**
+ * NANDA certification / verification attestation metadata.
+ */
+export interface AgentCertification {
+  level?: string
+  issuer?: string
+  valid_until?: string
+}
+
+/**
+ * Serialized `.well-known/mcp` manifest.
+ */
+export interface McpManifest {
+  name: string
+  version: string
+  endpoint: string
+  agentId?: string
+  description?: string
+  provider?: AgentProviderInput
+  publicKey?: string
+  ttl?: number
+  tools: McpToolDescriptor[]
+}
+
+/**
+ * MIT NANDA-compliant AgentFacts discovery document (`https://agentfacts.org/schema/v1`)
+ * served at `/.well-known/agent-facts`.
+ */
+export interface AgentFacts {
+  $schema: string
+  id: string
+  agent_name: string
+  label: string
+  description: string
+  version: string
+  documentationUrl?: string
+  jurisdiction?: string
+  provider: AgentProviderInfo
+  endpoints: {
+    static: string[]
+    adaptive_resolver?: AgentAdaptiveResolver
+    mcp: string
+    wellKnownMcp: string
+  }
+  capabilities: {
+    modalities: string[]
+    streaming: boolean
+    batch: boolean
+    authentication: {
+      methods: string[]
+      required: boolean
+    }
+    protocols: string[]
+    browserRuntime: boolean
+  }
+  skills: AgentSkill[]
+  tools: McpToolDescriptor[]
+  telemetry: AgentTelemetryConfig
+  certification?: AgentCertification
+  public_key?: string
+  ttl: number
+  issued_at: string
+}
+
+/**
+ * Telemetry event emitted after every `tools/call` invocation.
+ */
+export interface ToolCallTelemetryEvent {
+  toolName: string
+  durationMs: number
+  success: boolean
+  verifiedAgentKey?: string
+  error?: string
+}
+
+/**
+ * Telemetry event emitted whenever a discovery manifest is requested.
+ */
+export interface DiscoveryTelemetryEvent {
+  path: string
+  origin?: string
+}
+
+/**
  * Configuration options for initializing BindMCP.
  */
 export interface BindMcpOptions {
@@ -150,4 +282,30 @@ export interface BindMcpOptions {
     privateKey: string
     publicKey?: string
   }
+  /** Optional NANDA agent identifier (e.g., did:web:example.com) */
+  agentId?: string
+  /** Canonical NANDA URN identifier (e.g., urn:agent:myorg:service) */
+  agentName?: string
+  /** Human-readable display label for the agent (defaults to `name`) */
+  label?: string
+  /** Human- and agent-readable description of this service */
+  description?: string
+  /** URL to human/developer documentation for this agent */
+  documentationUrl?: string
+  /** Regulatory jurisdiction covering this agent */
+  jurisdiction?: string
+  /** Organization or author providing this agent endpoint */
+  provider?: AgentProviderInput
+  /** Optional NANDA adaptive endpoint resolver configuration */
+  adaptiveResolver?: AgentAdaptiveResolver
+  /** Optional NANDA telemetry declaration overrides */
+  telemetry?: Partial<AgentTelemetryConfig>
+  /** Optional NANDA certification attestation metadata */
+  certification?: AgentCertification
+  /** Cache / discovery TTL in seconds (default: 3600) */
+  ttl?: number
+  /** Zero-dependency telemetry hook fired after tool execution */
+  onToolCall?: (event: ToolCallTelemetryEvent) => void | Promise<void>
+  /** Zero-dependency telemetry hook fired on .well-known discovery requests */
+  onDiscovery?: (event: DiscoveryTelemetryEvent) => void | Promise<void>
 }
